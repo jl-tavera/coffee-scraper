@@ -1,0 +1,20 @@
+{   "SITE": {
+    "BASE_URL": "https://prima-coffee.com/brew",
+    "PRODUCTS_PER_PAGE": 100
+    },
+
+    "PROXY": {
+        "USER_AGENTS_PATH": "assets/user_agents/user_agents.csv",
+        "ACCEPT_LANGUAGE": "en-US,en;q=0.9",
+        "ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
+    },
+
+    "SCRAPE_CLASSES": {
+        "PRODUCT_GRID": "product-listing",
+        "PRODUCT": "product-item",
+        "NAME": "product-title",
+        "PRICE": "product-price",
+        "IMAGE": "product-image",
+        "DESCRIPTION": "product-description"
+    }
+}
