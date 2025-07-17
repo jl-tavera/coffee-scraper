@@ -1,10 +1,11 @@
 from playwright.async_api import async_playwright
-from scraper.utils.connection.proxy import get_proxies
-from scraper.utils.connection.config import load_env_variables, load_config
+from scraper.utils.config.proxy import get_proxies
+from scraper.utils.config.settings import load_env_variables, load_config_json
+
 
 class BaseScraper:
     def __init__(self, use_proxy: bool = True):
-        self.config = load_config()
+        self.config = load_config_json()
         self.env = load_env_variables()
         self.use_proxy = use_proxy
 
@@ -40,5 +41,3 @@ class BaseScraper:
 
     async def close(self):
         await self.browser.close()
-
-

@@ -1,6 +1,7 @@
 from scraper.utils.crawlers.base_scraper import BaseScraper
 import re
 
+
 class ProductDetailsScraper(BaseScraper):
     def __init__(self, use_proxy: bool = True):
         super().__init__(use_proxy)
@@ -123,7 +124,6 @@ class ProductDetailsScraper(BaseScraper):
             "reviews_count": int(re.search(r"\d+", text).group()) if re.search(r"\d+", text) else None
         }
 
-
     async def _extract_questions_and_answers(self) -> list[dict]:
         loc = self.locators["QUESTIONS"]
         tab = self.page.locator(loc["TAB"])
@@ -145,6 +145,7 @@ class ProductDetailsScraper(BaseScraper):
                 for a in await q.locator(loc["ANSWERS"]).all()
                 if await a.text_content()
             ]
-            questions.append({"name": name, "date": date, "question": question, "answers": answers})
+            questions.append({"name": name, "date": date,
+                             "question": question, "answers": answers})
 
         return questions

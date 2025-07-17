@@ -2,6 +2,7 @@ import csv
 import re
 import random
 
+
 def get_request_headers(config):
     filepath = config['PROXY']['USER_AGENTS_PATH']
     accept_language = config['PROXY']['ACCEPT_LANGUAGE']
@@ -19,6 +20,7 @@ def get_request_headers(config):
         "Accept": accept,
     }
 
+
 def proxy_dicts(env_dict):
     proxy = env_dict.get("PROXY")
     match = re.match(r"http://(.*?):(.*?)@(.*):(\d+)", proxy)
@@ -26,9 +28,11 @@ def proxy_dicts(env_dict):
         raise ValueError("Proxy format is invalid.")
     username, password, host, port = match.groups()
     return (
-        {"server": f"http://{host}:{port}", "username": username, "password": password},
+        {"server": f"http://{host}:{port}",
+            "username": username, "password": password},
         {"http": proxy, "https": proxy}
     )
+
 
 def get_proxies(env_dict, config):
     proxy_server_dict, proxy_http_dict = proxy_dicts(env_dict)

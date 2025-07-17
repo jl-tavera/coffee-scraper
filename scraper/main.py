@@ -1,16 +1,13 @@
 import asyncio
 import pandas as pd
-import os
-
-from scraper.utils.connection.proxy import proxy_dicts
 
 from scraper.utils.crawlers.products_scraper import ProductsGridScraper
 from scraper.utils.crawlers.details_scraper import ProductDetailsScraper
-from scraper.utils.connection.config import load_config
+from scraper.utils.config.settings import load_config_json
 
 async def main():
     # Load config
-    config = load_config()
+    config = load_config_json()
     # Base URL and settings
     use_proxy = config["SITE"]["USE_PROXY"]
     base_url = config["SITE"]["BASE_URL"]

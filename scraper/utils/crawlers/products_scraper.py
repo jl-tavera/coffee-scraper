@@ -1,6 +1,6 @@
 from scraper.utils.crawlers.base_scraper import BaseScraper
 from scraper.utils.crawlers.url_manager import URLManager
-from scraper.utils.procesing.procesing import *
+from scraper.utils.procesing.transformer import *
 
 class ProductsGridScraper(BaseScraper):
     def __init__(self, use_proxy: bool = True):
@@ -17,10 +17,9 @@ class ProductsGridScraper(BaseScraper):
         total_text = await self.page.locator(".pagination-info").first.text_content()
         total_items = get_total_items(total_text)
 
-        # Scrape first page
         products = await self._scrape_current_page()
         all_products.extend(products)
-        
+
         url_manager = URLManager(base_url, products_per_page)
         for url in url_manager.get_remaining_urls(total_items):
             await self.go_to(url)
