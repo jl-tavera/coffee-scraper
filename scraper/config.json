@@ -1,7 +1,8 @@
 {   "SITE": {
-    "BASE_URL": "https://prima-coffee.com/brew",
-    "PRODUCTS_PER_PAGE": 100
-    },
+        "BASE_URL": "https://prima-coffee.com/brew/coffee",
+        "PRODUCTS_PER_PAGE": 100,
+        "USE_PROXY": true
+        },
 
     "PROXY": {
         "USER_AGENTS_PATH": "assets/user_agents/user_agents.csv",
@@ -9,12 +10,51 @@
         "ACCEPT": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8"
     },
 
-    "SCRAPE_CLASSES": {
-        "PRODUCT_GRID": "product-listing",
-        "PRODUCT": "product-item",
-        "NAME": "product-title",
-        "PRICE": "product-price",
-        "IMAGE": "product-image",
-        "DESCRIPTION": "product-description"
+    "PRODUCTS_LOCATORS": {
+        "ITEM": "a.product.ng-scope.relative",
+        "TITLE": "h4.card-title",
+        "PRICE": ".price-section .price--main",
+        "URL_ATTR": "href",
+        "BRAND": "p.card-text.card-text--brand",
+        "BADGE": ".badges-container .badge",
+        "SALE_PRICE": "span[data-product-rrp-price-without-tax]",
+        "IMAGE": "img"
+        },
+
+    "PRODUCT_DETAILS_LOCATORS": {
+        "IMAGES": {
+            "ITEM": "li.productView-imageCarousel-main-item a"
+        },
+        "PRODUCT_INFO": {
+            "BRAND": "h5.productView-brand span[itemprop='name']",
+            "TITLE": "h1.productView-title",
+            "PRICE": "span[data-product-price-without-tax]",
+            "DETAILS_DT": "dl.productView-info dt",
+            "DETAILS_DD": "dl.productView-info dd"
+        },
+        "STOCK": {
+            "QUANTITY": "div.form-field--stock span[data-product-stock]"
+        },
+        "DESCRIPTION": {
+            "CONTAINER": "div.productView-description-tabContent[itemprop='description']",
+            "TAGS": ["h2", "h3", "p", "b", "li"]
+        },
+        "SPECIFICATIONS": {
+            "TABLE": "table"
+        },
+        "REVIEWS": {
+            "SECTION": ".yotpo-summary-section",
+            "SCORE": ".yotpo-bottom-line-score",
+            "TEXT": ".yotpo-bottom-line-basic-text"
+        },
+        "QUESTIONS": {
+            "TAB": "button.ugc-storefront-widgets-tabs-container__tab:text(\"Q&A\")",
+            "CONTAINER": "#yotpo-questions-container",
+            "ITEM": ".yotpo-question",
+            "NAME": ".yotpo-shopper-name",
+            "DATE": ".yotpo-date-format",
+            "QUESTION": ".yotpo-question-content .yotpo-read-more-text",
+            "ANSWERS": ".yotpo-answer-content .yotpo-read-more-text"
+        }
     }
 }
