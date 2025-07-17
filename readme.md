@@ -1,8 +1,52 @@
 # Coffee Scraper
 
+## Table of Contents
+
+- [File Structure](#file-structure)
+- [Scraping Stack](#scraping-stack)
+- [Scraping Logic](#scraping-logic)
+  - [Product Grid](#product-grid)
+  - [Product Price](#product-price)
+  - [Individual Page](#individual-page)
+- [Future Recommendations](#future-recommendations)
+  - [Database](#database)
+  - [Celery and Redis](#celery-and-redis)
+  - [Monitoring and Logging](#monitoring-and-logging)
+  - [Testing and CI/CD](#testing-and-cicd)
+
+
+## File Structure
+
+
+- `.venv/`: Local Python virtual environment folder (should be excluded from Git).
+- `assets/images/`: Optional folder to store scraped images or documentation screenshots.
+- `assets/user_agents/user_agents.csv`: Contains multiple user-agent strings for header rotation.
+- `scraper/`: Root scraping package.
+  - `__init__.py`: Declares this as a Python package.
+  - `config.json`: Stores all site-specific settings and locators, separated by functionality.
+  - `main.py`: Async entry point. Calls the grid scraper, then scrapes the detail pages and saves both datasets.
+  - `utils/`: Contains all organized modules:
+    - `config/`: Configuration logic
+      - `config.py`: Loads values from `config.json` and makes them accessible to other modules.
+      - `settings.py`: Stores static constants like default headers or environment toggles.
+    - `crawlers/`: Contains all classes that perform actual scraping
+      - `base_scraper.py`: Base scraper that handles Playwright setup, proxy rotation, and browser configuration.
+      - `products_scraper.py`: Scrapes paginated product cards (grid view).
+      - `details_scraper.py`: Scrapes the full product detail pages.
+      - `url_manager.py`: Utility to construct paginated URLs dynamically.
+    - `processing/`: Handles data cleaning and transformation
+      - `transformer.py`: Cleans and structures raw scraped data into pandas DataFrames and CSVs.
+- `.gitignore`: Prevents committing `__pycache__`, `.venv/`, and other temporary files.
+- `README.md`: Documentation for how the scraper works (this file).
+- `requirements.txt`: List of Python packages required to run the project.
 
 ## Scraping Stack
 
+I decided to use Playwright because it has many advantages like full JavaScript rendering, fast headless operation, and more control over mouse/keyboard events compared to traditional scrapers. I could have used Scrapy—which is better suited for static HTML websites—but since there is JavaScript logic on the site, Playwright is a better fit.
+
+To rotate proxies and avoid blocking, I integrated BrightData. This gives the advantage of managing residential IPs, and lets me scale more safely if I want to schedule this scraper or run it across large batches of URLs.
+
+Additionally, I used a modular structure with Python classes for flexibility and scalability. All the scraping logic is divided per responsibility (grid, product page, transformation), and all locators are managed from a centralized `config.json` file, so changes to the website structure don’t require touching the logic code.
 
 
 ## Scraping Logic
@@ -51,7 +95,7 @@ At the same time, if we analyze the pagination, we see on the left the total num
 
 3. Visit pages until the grid is empty—same as above: first page, `products.from=100`, and then `products.from=200`.
 
-There may be more options, but I think these are the three most efficient. Nonetheless, option one and two depend heavily on the style of the pagination navigator, which can change with any redesign. An empty grid is more tied to the webpage’s internal logic, so although option one gives a more concise limit, it can easily break with a redesign.
+There may be more options, but I think these are the three most efficient. Nonetheless, option one and two depend heavily on the style of the pagination navigator, which can change with any redesign. An empty grid is more tied to the webpage’s internal logic, so although option one gives a more concise limit, option three is the best way to go to not make more requests than you need. 
 
 Finally, before planning the code, let’s decide on the information to scrape. In the following screenshot, you have an example of a product. I made a diagram that shows all the info that appears in the product card:
 
@@ -59,9 +103,22 @@ Finally, before planning the code, let’s decide on the information to scrape. 
 
 This corresponds to: title, price, brand, badges, sale price (if it exists), image URL, and product URL. Also, in the diagram, you can find the classes of each element, which again appear not to be dynamic, so we can use them to target the elements. Obviously, there are product cards that don’t have a sale price or badges, but I think this is very important information you want to take into account when web scraping.
 
+To scrape all of this I created a class called `ProductsGridScraper`. This class inherits from the previously created `BaseScraper` and is structured in a modular way. Each piece of the information is extracted through its own method:
+
+- `_extract_cards`: selects all product elements
+- `_extract_title`: scrapes the title text from each card
+- `_extract_price`: scrapes the standard price
+- `_extract_brand`: gets the brand name
+- `_extract_sale_price`: conditionally scrapes the sale price if available
+- `_extract_badges`: loops over existing badges and extracts each
+- `_extract_image`: scrapes the image URL
+- `_extract_url`: extracts the link to the product page
+
+This makes the scraper easy to test, extend, and debug.
+
 ### Product Price
 
-My second mission is to enable sorting by price so the coffee shop owners can easily decide which equipment fits their budget. There are two ways you can filter by price:
+My second mission is to enable filter and sorting by price so the coffee shop owners can easily decide which equipment fits their budget. There are two ways you can filter by price:
 
 1. Pre-scraping filtering: Use the webpage’s filters (in this case, URL filters) to filter the prices. This can reduce the amount of pages to scrape, and with that, the number of requests.
 2. Post-scraping filtering: After scraping all the products, filter the ones in the price range (this may be with a SQL query). Although this can result in more requests, it doesn’t depend on the webpage’s filter logic. If that logic changes, the filter breaks.
@@ -74,8 +131,9 @@ https://prima-coffee.com/brew/coffee?products.filter.0.not.0.all.0.field=availab
 
 In the last part, you can see there’s a:
 
-products.filter.1.range.0.gte=100  
+products.filter.1.range.0.gte=100
 products.filter.1.range.0.lte=1000
+
 
 This way, you can modify the values to any price range you want. Obviously, this affects the total amount of items. To go to all the pages, let’s see what happens when we go to the next page:
 
@@ -85,8 +143,50 @@ Now, at the end, we have the same pagination parameter `&products.from=12`, so w
 
 ### Individual Page
 
+Finally, my third mission is to, based on the first 5 cheapest items, scrape all the information available including images, upc, sku, etc. 
+
+For this, we already have from the previous exercise the prices and the URLs of the products so we can find the cheapest ones.
+
+When we head to an individual page, we see there are the following sections:
+
+1. Product Carousel Images: Images of the product
+2. Product Details: Brand, title, number of reviews, price, sku, mpn, condition, current stock 
+3. Product Description: It has two parts—description and specification
+4. Product Specifications: Some products have another tab of additional information 
+5. Reviews Section: Some products have a reviews section; I just want to extract the review summary 
+6. Q&A Section: I want to get the questions and answers of the products
+
+For this, I created a class called `ProductDetailsScraper` that also inherits from the `BaseScraper`, and each of the sections is a method of the class. These include:
+
+- `_extract_images`: scrapes all carousel image links
+- `_extract_product_info`: scrapes price, sku, upc, mpn, and condition
+- `_extract_description`: parses the description text and HTML
+- `_extract_specifications`: scrapes any specs in tabular format
+- `_extract_reviews_summary`: scrapes only the summary review section
+- `_extract_questions_and_answers`: extracts Q&A data including answer counts
+
+Everything is modular and testable, and each section gracefully handles missing data when elements are not found.
 
 
+## Future Recommendations
+
+If you want to create a robust production-ready scraper that is scheduled to work every couple of hours, I want to make some recommendations of what is possible.
+
+### Database
+
+Create a good database schema to prevent deduplication, avoid saving the same product multiple times, and store changes in price instead of rewriting everything. Use a relational database like PostgreSQL where you can save product data, store historical prices in a separate table, and save nested objects (like reviews or questions) using JSON fields. Also, define indexes on relevant fields (like SKU, price, or brand) to speed up queries.
+
+### Celery and Redis
+
+With Celery and Redis you can add better workers for background tasks. This allows you to schedule scraping jobs, queue the detail scraping separately from the grid scraping, and retry failed tasks without blocking the whole process. Redis serves as the message broker, and Celery makes it easier to scale horizontally and handle multiple jobs concurrently.
+
+### Monitoiring and Logging
+
+You can add Prometheus to collect metrics like job duration, number of items scraped, or error rates. Then, connect that with Grafana to visualize those metrics in real time and track the health of your scraper. Also, improve your logging by adding structured logs so you can trace issues faster and understand what part of the scraper failed when something goes wrong.
+
+### Testing and CI/CD
+
+You can add unit tests for the transformers, parsing functions, and the logic that loads your configuration. Use GitHub Actions to run those tests automatically on every push or pull request. You could also schedule scraping jobs to run daily using GitHub Actions with a cron job. If needed, consider integration testing to check whether your locators are still working when the site changes.
 
 
 
