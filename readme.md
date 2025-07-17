@@ -103,18 +103,18 @@ Finally, before planning the code, let’s decide on the information to scrape. 
 
 This corresponds to: title, price, brand, badges, sale price (if it exists), image URL, and product URL. Also, in the diagram, you can find the classes of each element, which again appear not to be dynamic, so we can use them to target the elements. Obviously, there are product cards that don’t have a sale price or badges, but I think this is very important information you want to take into account when web scraping.
 
-To scrape all of this I created a class called `ProductsGridScraper`. This class inherits from the previously created `BaseScraper` and is structured in a modular way. Each piece of the information is extracted through its own method:
+To scrape all of this, I created a class called `ProductsGridScraper`. This class inherits from the previously defined `BaseScraper` and is structured in a modular way. It leverages a JSON-based locator configuration to extract the relevant product data, which keeps the logic clean and easily adaptable. The core scraping loop lives inside the `scrape_products` method, which handles pagination using a custom `URLManager`. The actual data extraction happens in the `_scrape_current_page` method, where each product card is parsed using the defined locators. The scraper extracts the following elements:
 
-- `_extract_cards`: selects all product elements
-- `_extract_title`: scrapes the title text from each card
-- `_extract_price`: scrapes the standard price
-- `_extract_brand`: gets the brand name
-- `_extract_sale_price`: conditionally scrapes the sale price if available
-- `_extract_badges`: loops over existing badges and extracts each
-- `_extract_image`: scrapes the image URL
-- `_extract_url`: extracts the link to the product page
+- `title`: the product title  
+- `price`: the standard price  
+- `url`: the link to the product’s detail page  
+- `brand`: the brand name  
+- `badges`: a list of any promotional badges (e.g., “Staff Pick”)  
+- `sale_price`: the discounted price, if available  
+- `image`: the image URL  
 
-This makes the scraper easy to test, extend, and debug.
+Each key is extracted using conditional checks to avoid breaking the scraper if some elements are missing. This makes the scraper robust, easy to test, and simple to extend or debug.
+
 
 ### Product Price
 
@@ -123,7 +123,7 @@ My second mission is to enable filter and sorting by price so the coffee shop ow
 1. Pre-scraping filtering: Use the webpage’s filters (in this case, URL filters) to filter the prices. This can reduce the amount of pages to scrape, and with that, the number of requests.
 2. Post-scraping filtering: After scraping all the products, filter the ones in the price range (this may be with a SQL query). Although this can result in more requests, it doesn’t depend on the webpage’s filter logic. If that logic changes, the filter breaks.
 
-I'm going to explain how to implement the first option, but option two is the one you are able to see in the Streamlit frontend.
+I'm going to explain how to implement the first option, but option two is the one I would implement.
 
 To analyze how the filters work, it depends a lot on the webpage. Some webpages use JavaScript to filter, and this cannot be accessed through the URL because the filter is applied client-side, and the server receives no query parameter indicating the filtering—so the HTML returned remains the same. Fortunately, this is not our case. For example, let’s see what happens when we set a price range from 100 to 1000. As you can see, the URL is:
 
@@ -141,31 +141,37 @@ https://prima-coffee.com/brew/coffee?products.filter.0.not.0.all.0.field=availab
 
 Now, at the end, we have the same pagination parameter `&products.from=12`, so we can apply any of the methods we previously mentioned.
 
+Sorting works in a similar way. The webpage allows sorting by price through a URL parameter, but you can also handle sorting yourself after scraping all products—especially if you plan to store them in a database or manipulate them with Python or SQL.
+
 ### Individual Page
 
-Finally, my third mission is to, based on the first 5 cheapest items, scrape all the information available including images, upc, sku, etc. 
+Finally, my third mission is to, based on the first 5 cheapest items, scrape all the information available including images, upc, sku, etc.
 
 For this, we already have from the previous exercise the prices and the URLs of the products so we can find the cheapest ones.
 
 When we head to an individual page, we see there are the following sections:
 
-1. Product Carousel Images: Images of the product
-2. Product Details: Brand, title, number of reviews, price, sku, mpn, condition, current stock 
-3. Product Description: It has two parts—description and specification
-4. Product Specifications: Some products have another tab of additional information 
-5. Reviews Section: Some products have a reviews section; I just want to extract the review summary 
-6. Q&A Section: I want to get the questions and answers of the products
+1. Product Carousel Images: Images of the product  
+2. Product Details: Brand, title, number of reviews, price, sku, mpn, condition, current stock  
+3. Product Description: It has two parts—description and specification  
+4. Product Specifications: Some products have another tab of additional information  
+5. Reviews Section: Some products have a reviews section; I just want to extract the review summary  
+6. Q&A Section: I want to get the questions and answers of the products  
 
-For this, I created a class called `ProductDetailsScraper` that also inherits from the `BaseScraper`, and each of the sections is a method of the class. These include:
+For this, I created a class called `ProductDetailsScraper` that also inherits from the `BaseScraper`, and each of the sections is extracted using separate modular methods. The entire process is encapsulated inside the method `scrape_product_details`, which takes a `product_url` and returns a detailed dictionary of product attributes. Each field is handled gracefully in case the element is missing.
 
-- `_extract_images`: scrapes all carousel image links
-- `_extract_product_info`: scrapes price, sku, upc, mpn, and condition
-- `_extract_description`: parses the description text and HTML
-- `_extract_specifications`: scrapes any specs in tabular format
-- `_extract_reviews_summary`: scrapes only the summary review section
-- `_extract_questions_and_answers`: extracts Q&A data including answer counts
+These are the internal methods responsible for each section:
 
-Everything is modular and testable, and each section gracefully handles missing data when elements are not found.
+- `_extract_images`: scrapes all image URLs from the carousel by querying anchor `href` attributes  
+- `_extract_product_info`: gets brand, title, price, and a dynamic dictionary of attributes like SKU, UPC, MPN, and condition from the `<dt>`/`<dd>` pairs  
+- `_extract_stock_info`: pulls stock availability if present  
+- `_extract_description`: walks through each tag (like paragraphs or list items) inside the description container and concatenates their text  
+- `_extract_specifications`: parses tables row-by-row to build a dictionary of specs  
+- `_extract_review_summary`: gets both the numeric score and total review count (if available)  
+- `_extract_questions_and_answers`: loops through question containers, collects question metadata and the associated list of answers  
+
+Each method uses locators defined in the JSON-based config under the `PRODUCT_DETAILS_LOCATORS` key and follows conditional patterns to prevent the scraper from failing due to missing DOM elements. The final return is a single structured dictionary with keys like `brand`, `title`, `price`, `images`, `description`, `specifications`, `reviews`, `questions`, and `stock`. Everything is structured to be testable, debuggable, and easy to extend.
+
 
 
 ## Future Recommendations
