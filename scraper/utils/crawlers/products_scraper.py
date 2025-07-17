@@ -4,10 +4,16 @@ from scraper.utils.procesing.transformer import *
 
 class ProductsGridScraper(BaseScraper):
     def __init__(self, use_proxy: bool = True):
+        """"
+        Initialize the ProductsGridScraper with configuration and proxy settings.
+        """
         super().__init__(use_proxy)
         self.locators = self.config["PRODUCTS_LOCATORS"]
 
     async def scrape_products(self, base_url: str, products_per_page: int = 100) -> list[dict]:
+        """"
+        Scrape product information from the grid view of a website.
+        """
         await self.setup()
         all_products = []
 
@@ -30,6 +36,9 @@ class ProductsGridScraper(BaseScraper):
         return all_products
 
     async def _scrape_current_page(self) -> list[dict]:
+        """"
+        Scrape product information for each item on the current page.
+        """
         loc = self.locators
         items = await self.page.locator(loc["ITEM"]).all()
         products = []

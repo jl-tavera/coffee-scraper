@@ -5,6 +5,9 @@ from scraper.utils.config.settings import load_env_variables, load_config_json
 
 class BaseScraper:
     def __init__(self, use_proxy: bool = True):
+        """"
+        Initialize the base scraper with configuration and proxy settings.
+        """
         self.config = load_config_json()
         self.env = load_env_variables()
         self.use_proxy = use_proxy
@@ -20,6 +23,9 @@ class BaseScraper:
         self.page = None
 
     async def setup(self):
+        """"
+        Set up the Playwright browser, context, and page.
+        """
         playwright = await async_playwright().start()
         launch_args = {"headless": True}
         context_args = {
@@ -36,8 +42,14 @@ class BaseScraper:
         self.page = await self.context.new_page()
 
     async def go_to(self, url):
+        """"
+        Navigate to a specified URL.
+        """
         await self.page.goto(url)
         print(f"Loaded page: {await self.page.title()}")
 
     async def close(self):
+        """"
+        Close the browser and clean up resources.
+        """
         await self.browser.close()

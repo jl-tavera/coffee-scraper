@@ -4,10 +4,16 @@ import re
 
 class ProductDetailsScraper(BaseScraper):
     def __init__(self, use_proxy: bool = True):
+        """"
+        Initialize the ProductDetailsScraper with configuration and proxy settings.
+        """
         super().__init__(use_proxy)
         self.locators = self.config["PRODUCT_DETAILS_LOCATORS"]
 
     async def scrape_product_details(self, product_url: str) -> dict:
+        """
+        Scrape detailed information about a product from its page.
+            """
         await self.setup()
         await self.go_to(product_url)
 
@@ -32,8 +38,11 @@ class ProductDetailsScraper(BaseScraper):
         }
 
     async def _extract_images(self) -> list[str]:
-        selector = self.locators["IMAGES"]["ITEM"]
-        image_elements = await self.page.locator(selector).all()
+        """
+        Extract image URLs from the product page.
+        """
+        loc = self.locators["IMAGES"]["ITEM"]
+        image_elements = await self.page.locator(loc).all()
         return [
             await a.get_attribute("href")
             for a in image_elements
@@ -41,6 +50,9 @@ class ProductDetailsScraper(BaseScraper):
         ]
 
     async def _extract_product_info(self) -> dict:
+        """
+        Extract product information such as brand, title, price, and details.
+        """
         loc = self.locators["PRODUCT_INFO"]
         brand = await self.page.locator(loc["BRAND"]).text_content()
         title = await self.page.locator(loc["TITLE"]).text_content()
@@ -63,15 +75,22 @@ class ProductDetailsScraper(BaseScraper):
         }
 
     async def _extract_stock_info(self) -> str | None:
-        stock_locator = self.page.locator(self.locators["STOCK"]["QUANTITY"])
-        if await stock_locator.count() > 0:
-            stock = await stock_locator.text_content()
+        """
+        Extract stock information from the product page.
+        """
+        loc = self.page.locator(self.locators["STOCK"]["QUANTITY"])
+        if await loc.count() > 0:
+            stock = await loc.text_content()
             return stock.strip()
         return None
 
     async def _extract_description(self) -> str:
-        selector = self.locators["DESCRIPTION"]["CONTAINER"]
-        description_container = self.page.locator(selector)
+        """"
+        Extract product description from any 
+        available tags in the description container.
+        """
+        loc = self.locators["DESCRIPTION"]["CONTAINER"]
+        description_container = self.page.locator(loc)
         if await description_container.count() == 0:
             return ""
 
@@ -87,11 +106,14 @@ class ProductDetailsScraper(BaseScraper):
                 if text:
                     parts.append(f"- {text}" if tag == "li" else text)
 
-        return "\n".join(parts).strip()
+        return " ".join(parts).strip()
 
     async def _extract_specifications(self) -> dict:
-        selector = self.locators["SPECIFICATIONS"]["TABLE"]
-        tables = self.page.locator(selector)
+        """
+        Extract product specifications from the specifications table.
+        """
+        loc = self.locators["SPECIFICATIONS"]["TABLE"]
+        tables = self.page.locator(loc)
 
         for i in range(await tables.count()):
             table = tables.nth(i)
@@ -111,6 +133,9 @@ class ProductDetailsScraper(BaseScraper):
         return {}
 
     async def _extract_review_summary(self) -> dict:
+        """
+        Extract review summary including score and review count.
+        """
         loc = self.locators["REVIEWS"]
         section = self.page.locator(loc["SECTION"])
         if await section.count() == 0:
@@ -125,6 +150,9 @@ class ProductDetailsScraper(BaseScraper):
         }
 
     async def _extract_questions_and_answers(self) -> list[dict]:
+        """
+        Extract questions and answers from the product page.
+        """
         loc = self.locators["QUESTIONS"]
         tab = self.page.locator(loc["TAB"])
         if await tab.count() > 0:

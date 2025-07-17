@@ -4,6 +4,9 @@ import random
 
 
 def get_request_headers(config):
+    """"
+    Load user agents from a CSV file and return headers for requests.
+    """
     filepath = config['PROXY']['USER_AGENTS_PATH']
     accept_language = config['PROXY']['ACCEPT_LANGUAGE']
     accept = config['PROXY']['ACCEPT']
@@ -22,6 +25,9 @@ def get_request_headers(config):
 
 
 def proxy_dicts(env_dict):
+    """
+    Extract proxy information from environment variables.
+    """
     proxy = env_dict.get("PROXY")
     match = re.match(r"http://(.*?):(.*?)@(.*):(\d+)", proxy)
     if not match:
@@ -35,6 +41,9 @@ def proxy_dicts(env_dict):
 
 
 def get_proxies(env_dict, config):
+    """"
+    Get proxy settings and headers for requests.
+    """
     proxy_server_dict, proxy_http_dict = proxy_dicts(env_dict)
     headers = get_request_headers(config)
     return headers, proxy_server_dict, proxy_http_dict
